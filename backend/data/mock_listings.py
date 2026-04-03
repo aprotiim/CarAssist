@@ -1,0 +1,12 @@
+from backend.models.schemas import Listing
+
+MOCK_LISTINGS: list[Listing] = [
+    Listing(id=1,  year=2021, make="Toyota",  model="Camry SE",         price=22500, mileage=34000, fuel="Gasoline", body="Sedan",    transmission="Automatic", drivetrain="FWD", color="White",  source="CarGurus",   dealer="AutoNation Toyota",       dealer_type="dealer",  score=92, img="🚗", zip="32601"),
+    Listing(id=2,  year=2020, make="Honda",   model="CR-V EX",          price=25800, mileage=41000, fuel="Gasoline", body="SUV",      transmission="CVT",       drivetrain="AWD", color="Blue",   source="Cars.com",   dealer="Honda of Gainesville",    dealer_type="dealer",  score=87, img="🚙", zip="32608"),
+    Listing(id=3,  year=2022, make="Hyundai", model="Tucson SEL",       price=24200, mileage=28000, fuel="Hybrid",   body="SUV",      transmission="Automatic", drivetrain="AWD", color="Gray",   source="Autotrader", dealer="Hyundai of North FL",     dealer_type="dealer",  score=94, img="🚙", zip="32605"),
+    Listing(id=4,  year=2019, make="Mazda",   model="Mazda3 Hatchback", price=18900, mileage=52000, fuel="Gasoline", body="Hatchback", transmission="Automatic", drivetrain="FWD", color="Red",    source="CarMax",     dealer="CarMax Jacksonville",     dealer_type="dealer",  score=89, img="🚗", zip="32256"),
+    Listing(id=5,  year=2021, make="Tesla",   model="Model 3 SR+",      price=29500, mileage=31000, fuel="Electric", body="Sedan",    transmission="Automatic", drivetrain="RWD", color="Black",  source="Carvana",    dealer="Carvana",                 dealer_type="dealer",  score=85, img="🚗", zip="32601"),
+    Listing(id=6,  year=2020, make="Subaru",  model="Outback Premium",  price=23400, mileage=45000, fuel="Gasoline", body="Wagon",    transmission="CVT",       drivetrain="AWD", color="Green",  source="TrueCar",    dealer="Subaru of Jacksonville",  dealer_type="dealer",  score=91, img="🚙", zip="32225"),
+    Listing(id=7,  year=2022, make="Kia",     model="Forte GT",         price=19800, mileage=22000, fuel="Gasoline", body="Sedan",    transmission="Automatic", drivetrain="FWD", color="White",  source="CarGurus",   dealer="Private Seller",          dealer_type="private", score=96, img="🚗", zip="32607"),
+    Listing(id=8,  year=2018, make="Ford",    model="F-150 XLT",        price=27500, mileage=58000, fuel="Gasoline", body="Truck",    transmission="Automatic", drivetrain="4WD", color="Silver", source="Facebook",   dealer="Private Seller",          dealer_type="private", score=83, img="🛻", zip="32603"),
+]

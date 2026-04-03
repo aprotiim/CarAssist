@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --sage-300: #6ee7b7;
+    --sage-500: #10b981;
+    --sage-600: #059669;
+    --dark-900: #0a0a1a;
+    --dark-800: #0d1117;
+    --dark-500: #1a1a2e;
+    --dark-400: #2a2a4a;
+    --muted: #8888aa;
+    --dim: #c8c8d8;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: linear-gradient(170deg, #0a0a1a 0%, #0d1117 40%, #0a0a1a 100%);
+    color: #e4e4f0;
+    min-height: 100vh;
+  }
+
+  input[type='range'] {
+    accent-color: var(--sage-300);
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0a0a1a;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a2a4a;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3a3a5a;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-gradient-to-br from-[rgba(20,20,40,0.9)] to-[rgba(15,15,30,0.95)] border border-sage-300/[0.08] rounded-2xl p-5 transition-all duration-300;
+  }
+
+  .btn-primary {
+    @apply px-7 py-3 rounded-xl border-none cursor-pointer bg-gradient-to-br from-sage-600 to-sage-500 text-white font-semibold text-sm tracking-wide transition-all duration-200 shadow-sage hover:brightness-110;
+  }
+
+  .btn-outline {
+    @apply px-7 py-3 rounded-xl border border-sage-300/30 cursor-pointer bg-transparent text-sage-300 font-semibold text-sm tracking-wide transition-all duration-200 hover:bg-sage-300/10;
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 rounded-lg border border-dark-400 bg-transparent text-muted cursor-pointer text-sm font-medium transition-all duration-200 hover:border-dark-300 hover:text-dim;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl border border-dark-400 bg-white/[0.03] text-white text-sm font-sans outline-none transition-all duration-200 focus:border-sage-300/40 focus:bg-white/[0.05] placeholder:text-muted;
+  }
+
+  .label {
+    @apply block text-xs font-semibold tracking-widest uppercase text-sage-300 mb-1.5;
+  }
+}
