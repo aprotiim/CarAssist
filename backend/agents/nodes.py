@@ -126,57 +126,13 @@ Intent rules:
 # ---------------------------------------------------------------------------
 
 async def search_node(state: CarAssistState) -> dict:
-    """Filter MOCK_LISTINGS based on extracted search preferences."""
+    """Fetch real car listings via Exa web search."""
     try:
-        from backend.data.mock_listings import MOCK_LISTINGS
-
+        from backend.services import exa_service
         prefs = state.get("search_preferences") or {}
-        filtered = [l.model_dump() for l in MOCK_LISTINGS]
-
-        # Body types filter
-        body_types = prefs.get("body_types") or []
-        if body_types:
-            filtered = [l for l in filtered if l["body"] in body_types]
-
-        # Fuel types filter
-        fuel_types = prefs.get("fuel_types") or []
-        if fuel_types:
-            filtered = [l for l in filtered if l["fuel"] in fuel_types]
-
-        # Brands filter
-        brands = prefs.get("brands") or []
-        if brands:
-            filtered = [l for l in filtered if l["make"] in brands]
-
-        # Budget filter
-        budget_min = prefs.get("budget_min")
-        budget_max = prefs.get("budget_max")
-        if budget_min is not None:
-            filtered = [l for l in filtered if l["price"] >= budget_min]
-        if budget_max is not None:
-            filtered = [l for l in filtered if l["price"] <= budget_max]
-
-        # Year filter
-        year_min = prefs.get("year_min")
-        year_max = prefs.get("year_max")
-        if year_min is not None:
-            filtered = [l for l in filtered if l["year"] >= year_min]
-        if year_max is not None:
-            filtered = [l for l in filtered if l["year"] <= year_max]
-
-        # Mileage filter
-        max_mileage = prefs.get("max_mileage")
-        if max_mileage is not None:
-            filtered = [l for l in filtered if l["mileage"] <= max_mileage]
-
-        # Fall back to all listings if nothing matches
-        if not filtered:
-            filtered = [l.model_dump() for l in MOCK_LISTINGS]
-
-        # Sort by score descending, return top 5
-        filtered.sort(key=lambda l: l["score"], reverse=True)
-        return {"listings": filtered[:5]}
-
+        listings = await exa_service.search_listings(prefs)
+        listings.sort(key=lambda l: l.get("score", 0), reverse=True)
+        return {"listings": listings[:5]}
     except Exception as exc:
         return {"listings": [], "error": f"Search error: {exc}"}
 
@@ -186,29 +142,24 @@ async def search_node(state: CarAssistState) -> dict:
 # ---------------------------------------------------------------------------
 
 async def rag_node(state: CarAssistState) -> dict:
-    """Retrieve the most relevant knowledge-base content for the user query."""
+    """Retrieve relevant knowledge via Pinecone semantic search, keyword fallback."""
     try:
-        from backend.data.rag_content import RAG_CONTENT
         from backend.services import rag_service
-
         user_message = _last_user_message(state)
-        topic_id, content = rag_service.retrieve(user_message)
+        _, content = rag_service.retrieve(user_message)
 
         if content:
             return {"rag_context": content}
 
-        # Fallback: score every topic by keyword frequency and take top 3
+        # Last-resort fallback: top-3 topics by keyword frequency
+        from backend.data.rag_content import RAG_CONTENT
         lower = user_message.lower()
-        scored = []
-        for tid, tcontent in RAG_CONTENT.items():
-            words = lower.split()
-            score = sum(1 for w in words if w in tcontent.lower())
-            scored.append((score, tid, tcontent))
-
-        scored.sort(key=lambda x: x[0], reverse=True)
-        top_3 = [tcontent for _, _, tcontent in scored[:3]]
-        combined = "\n\n---\n\n".join(top_3)
-
+        scored = sorted(
+            RAG_CONTENT.items(),
+            key=lambda kv: sum(1 for w in lower.split() if w in kv[1].lower()),
+            reverse=True,
+        )
+        combined = "\n\n---\n\n".join(c for _, c in scored[:3])
         return {"rag_context": combined}
 
     except Exception as exc:

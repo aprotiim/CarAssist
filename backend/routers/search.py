@@ -1,38 +1,41 @@
+import asyncio
 from fastapi import APIRouter, HTTPException
-from backend.models.schemas import SearchPreferences, SearchResponse, Listing, ListingAnalysisRequest, ListingAnalysisResponse
-from backend.data.mock_listings import MOCK_LISTINGS
+from pydantic import BaseModel
+from backend.models.schemas import SearchPreferences, Listing, ListingAnalysisRequest, ListingAnalysisResponse
 from backend.services import claude_service
 
 router = APIRouter(prefix="/api", tags=["search"])
 
 
+class SearchResponse(BaseModel):
+    listings: list[dict]
+    total: int
+    sources_searched: int
+
+
 @router.post("/search", response_model=SearchResponse)
 async def search(prefs: SearchPreferences) -> SearchResponse:
-    filtered = list(MOCK_LISTINGS)
+    from backend.services import exa_service
 
-    if prefs.body_types:
-        filtered = [l for l in filtered if l.body in prefs.body_types]
-    if prefs.fuel_types:
-        filtered = [l for l in filtered if l.fuel in prefs.fuel_types]
-    if prefs.brands:
-        filtered = [l for l in filtered if l.make in prefs.brands]
-    if prefs.transmissions:
-        filtered = [l for l in filtered if l.transmission in prefs.transmissions]
-    if prefs.drivetrains:
-        filtered = [l for l in filtered if l.drivetrain in prefs.drivetrains]
+    prefs_dict = {
+        "brands": prefs.brands,
+        "body_types": prefs.body_types,
+        "fuel_types": prefs.fuel_types,
+        "budget_min": prefs.budget_min,
+        "budget_max": prefs.budget_max,
+        "year_min": prefs.year_min,
+        "year_max": prefs.year_max,
+        "max_mileage": prefs.max_mileage,
+    }
 
-    filtered = [
-        l for l in filtered
-        if prefs.budget_min <= l.price <= prefs.budget_max
-        and l.mileage <= prefs.max_mileage
-        and prefs.year_min <= l.year <= prefs.year_max
-    ]
+    listings, sites_searched = await exa_service.search_listings(prefs_dict)
 
-    return SearchResponse(listings=filtered, total=len(filtered))
+    return SearchResponse(listings=listings, total=len(listings), sources_searched=sites_searched)
 
 
 @router.get("/listings/{listing_id}", response_model=Listing)
-async def get_listing(listing_id: int) -> Listing:
+async def get_listing(listing_id: int):
+    from backend.data.mock_listings import MOCK_LISTINGS
     listing = next((l for l in MOCK_LISTINGS if l.id == listing_id), None)
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
@@ -40,7 +43,8 @@ async def get_listing(listing_id: int) -> Listing:
 
 
 @router.post("/listings/{listing_id}/analyze", response_model=ListingAnalysisResponse)
-async def analyze_listing(listing_id: int) -> ListingAnalysisResponse:
+async def analyze_listing(listing_id: int):
+    from backend.data.mock_listings import MOCK_LISTINGS
     listing = next((l for l in MOCK_LISTINGS if l.id == listing_id), None)
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")

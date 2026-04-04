@@ -1,27 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
-import { MOCK_LISTINGS } from "@/lib/constants";
 import type { Preferences } from "@/lib/types";
+
+const BACKEND = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export async function POST(req: NextRequest) {
   try {
     const prefs: Preferences = await req.json();
-    let filtered = [...MOCK_LISTINGS];
 
-    if (prefs.bodyTypes?.length)     filtered = filtered.filter(l => prefs.bodyTypes.includes(l.body));
-    if (prefs.fuelTypes?.length)     filtered = filtered.filter(l => prefs.fuelTypes.includes(l.fuel));
-    if (prefs.brands?.length)        filtered = filtered.filter(l => prefs.brands.includes(l.make));
-    if (prefs.transmissions?.length) filtered = filtered.filter(l => prefs.transmissions.includes(l.transmission));
-    if (prefs.drivetrains?.length)   filtered = filtered.filter(l => prefs.drivetrains.includes(l.drivetrain));
+    const backendRes = await fetch(`${BACKEND}/api/search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        budget_min: prefs.budgetMin,
+        budget_max: prefs.budgetMax,
+        body_types: prefs.bodyTypes,
+        fuel_types: prefs.fuelTypes,
+        max_mileage: prefs.maxMileage,
+        year_min: prefs.yearMin,
+        year_max: prefs.yearMax,
+        transmissions: prefs.transmissions,
+        drivetrains: prefs.drivetrains,
+        brands: prefs.brands,
+        zip_code: prefs.zip,
+        radius_miles: prefs.radius,
+      }),
+    });
 
-    filtered = filtered.filter(l =>
-      l.price >= (prefs.budgetMin ?? 0) &&
-      l.price <= (prefs.budgetMax ?? Infinity) &&
-      l.mileage <= (prefs.maxMileage ?? Infinity) &&
-      l.year >= (prefs.yearMin ?? 0) &&
-      l.year <= (prefs.yearMax ?? 9999)
-    );
+    if (!backendRes.ok) {
+      throw new Error(`Backend error: ${backendRes.status}`);
+    }
 
-    return NextResponse.json({ listings: filtered, total: filtered.length });
+    const data = await backendRes.json();
+    return NextResponse.json(data);
   } catch (error) {
     console.error("Search API error:", error);
     return NextResponse.json({ error: "Search failed" }, { status: 500 });

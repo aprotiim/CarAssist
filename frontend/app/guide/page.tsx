@@ -23,12 +23,51 @@ export default function GuidePage() {
     <div>
       {!selectedId ? (
         <>
-          <h2 className="font-mono text-[22px] font-bold text-white mb-1.5">
+          <h2 className="font-mono text-3xl font-bold text-white mb-2">
             Used Car Buying Guide
           </h2>
-          <p className="text-muted text-sm mb-6">
+          <p className="text-muted text-base mb-6">
             Everything you need to know, curated by AI from trusted sources
           </p>
+
+          {/* Preliminary steps */}
+          <div className="card mb-6">
+            <h3 className="font-mono text-xl font-bold text-white mb-4">
+              Before You Buy — 4 Essential Steps
+            </h3>
+            <div className="flex flex-col gap-4">
+              {[
+                {
+                  icon: "💬",
+                  step: "1. Request the VIN",
+                  desc: "Message the seller and ask for the 17-digit VIN. Use it to verify the title status and run a vehicle history report. If a seller refuses, walk away.",
+                },
+                {
+                  icon: "📑",
+                  step: "2. Verify with NHTSA",
+                  desc: "Use the free NHTSA vPIC tool (vpic.nhtsa.dot.gov) to confirm the VIN matches the car's factory specs — year, make, and model.",
+                },
+                {
+                  icon: "🛠️",
+                  step: "3. Get a Pre-Purchase Inspection",
+                  desc: "Book a PPI at an independent mechanic before handing over any money. A $100–200 inspection can reveal hidden leaks, frame damage, or engine issues.",
+                },
+                {
+                  icon: "🤝",
+                  step: "4. Close Securely",
+                  desc: "Finalize the transaction at a bank or your local DMV. Verify the seller's government-issued ID matches the name on the title before signing anything.",
+                },
+              ].map(({ icon, step, desc }) => (
+                <div key={step} className="flex gap-3 items-start">
+                  <span className="text-2xl mt-0.5">{icon}</span>
+                  <div>
+                    <p className="text-base font-semibold text-white">{step}</p>
+                    <p className="text-sm text-muted leading-relaxed mt-1">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
           <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))" }}>
             {RAG_TOPICS.map(t => (
@@ -37,9 +76,9 @@ export default function GuidePage() {
                 onClick={() => setSelectedId(t.id)}
                 className="card text-left hover:border-sage-300/20 hover:bg-sage-300/5 cursor-pointer"
               >
-                <p className="text-[26px] mb-2">{t.icon}</p>
-                <p className="font-bold text-sm text-white mb-1">{t.title}</p>
-                <p className="text-xs text-muted leading-relaxed">{t.desc}</p>
+                <p className="text-4xl mb-3">{t.icon}</p>
+                <p className="font-bold text-base text-white mb-1.5">{t.title}</p>
+                <p className="text-sm text-muted leading-relaxed">{t.desc}</p>
               </button>
             ))}
           </div>
@@ -54,9 +93,9 @@ export default function GuidePage() {
           </button>
 
           <div className="card">
-            <p className="text-[30px] mb-3">{topic?.icon}</p>
-            <h2 className="font-mono text-xl font-bold text-white mb-4">{topic?.title}</h2>
-            <div className="text-sm text-dim leading-loose whitespace-pre-wrap">
+            <p className="text-5xl mb-4">{topic?.icon}</p>
+            <h2 className="font-mono text-2xl font-bold text-white mb-4">{topic?.title}</h2>
+            <div className="text-base text-dim leading-loose whitespace-pre-wrap">
               {renderMarkdown(RAG_CONTENT[selectedId] ?? "")}
             </div>
 

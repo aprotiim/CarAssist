@@ -6,25 +6,35 @@ import ToggleChip from "@/components/ToggleChip";
 import { usePreferences } from "@/lib/preferences-context";
 import {
   WIZARD_STEPS, BODY_TYPES, FUEL_TYPES, TRANSMISSIONS,
-  DRIVETRAINS, FEATURES, BRANDS, MOCK_LISTINGS,
+  DRIVETRAINS, FEATURES, BRANDS,
 } from "@/lib/constants";
+import { useState } from "react";
 
 export default function WizardPage() {
   const router = useRouter();
-  const { prefs, setPref, toggle, step, setStep, setResults } = usePreferences();
+  const { prefs, setPref, toggle, step, setStep, setResults, setSearchMeta } = usePreferences();
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
 
-  const runSearch = () => {
-    let filtered = [...MOCK_LISTINGS];
-    if (prefs.bodyTypes.length)    filtered = filtered.filter(l => prefs.bodyTypes.includes(l.body));
-    if (prefs.fuelTypes.length)    filtered = filtered.filter(l => prefs.fuelTypes.includes(l.fuel));
-    if (prefs.brands.length)       filtered = filtered.filter(l => prefs.brands.includes(l.make));
-    if (prefs.transmissions.length) filtered = filtered.filter(l => prefs.transmissions.includes(l.transmission));
-    if (prefs.drivetrains.length)  filtered = filtered.filter(l => prefs.drivetrains.includes(l.drivetrain));
-    filtered = filtered.filter(l => l.price >= prefs.budgetMin && l.price <= prefs.budgetMax);
-    filtered = filtered.filter(l => l.mileage <= prefs.maxMileage);
-    filtered = filtered.filter(l => l.year >= prefs.yearMin && l.year <= prefs.yearMax);
-    setResults(filtered);
-    router.push("/results");
+  const runSearch = async () => {
+    setSearching(true);
+    setSearchError("");
+    try {
+      const res = await fetch("/api/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(prefs),
+      });
+      if (!res.ok) throw new Error("Search failed");
+      const data = await res.json();
+      setResults(data.listings || []);
+      setSearchMeta(data.total || 0, data.sources_searched || 0);
+      router.push("/results");
+    } catch {
+      setSearchError("Search failed. Please try again.");
+    } finally {
+      setSearching(false);
+    }
   };
 
   const s = WIZARD_STEPS[step];
@@ -44,7 +54,7 @@ export default function WizardPage() {
               onChange={e => setPref(key, +e.target.value)}
               className="w-full"
             />
-            <p className="text-2xl font-bold text-white mt-1">${prefs[key].toLocaleString()}</p>
+            <p className="text-3xl font-bold text-white mt-1">${prefs[key].toLocaleString()}</p>
           </div>
         ))}
       </div>
@@ -72,7 +82,7 @@ export default function WizardPage() {
             <label className="label">{idx === 0 ? "From Year" : "To Year"}</label>
             <input type="range" min={2005} max={2025} value={prefs[key]}
               onChange={e => setPref(key, +e.target.value)} className="w-full" />
-            <p className="text-2xl font-bold text-white mt-1">{prefs[key]}</p>
+            <p className="text-3xl font-bold text-white mt-1">{prefs[key]}</p>
           </div>
         ))}
       </div>
@@ -82,7 +92,7 @@ export default function WizardPage() {
         <label className="label">Max Mileage</label>
         <input type="range" min={10000} max={200000} step={5000} value={prefs.maxMileage}
           onChange={e => setPref("maxMileage", +e.target.value)} className="w-full" />
-        <p className="text-2xl font-bold text-white mt-1">{prefs.maxMileage.toLocaleString()} miles</p>
+        <p className="text-3xl font-bold text-white mt-1">{prefs.maxMileage.toLocaleString()} miles</p>
       </div>
     ),
     transmission: (
@@ -125,7 +135,7 @@ export default function WizardPage() {
         <label className="label">Search Radius</label>
         <input type="range" min={10} max={500} step={10} value={prefs.radius}
           onChange={e => setPref("radius", +e.target.value)} className="w-full" />
-        <p className="text-xl font-bold text-white mt-1">{prefs.radius} miles</p>
+        <p className="text-3xl font-bold text-white mt-1">{prefs.radius} miles</p>
       </div>
     ),
   };
@@ -136,13 +146,13 @@ export default function WizardPage() {
 
       <div className="card">
         {/* Step header */}
-        <div className="flex items-center gap-2.5 mb-5">
-          <span className="text-3xl">{s.icon}</span>
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-4xl">{s.icon}</span>
           <div>
-            <p className="text-xs text-sage-300 font-semibold tracking-widest uppercase">
+            <p className="text-sm text-sage-300 font-semibold tracking-widest uppercase">
               Step {step + 1} of {WIZARD_STEPS.length}
             </p>
-            <p className="text-2xl font-bold text-white">{s.label}</p>
+            <p className="text-3xl font-bold text-white">{s.label}</p>
           </div>
         </div>
 
@@ -167,9 +177,16 @@ export default function WizardPage() {
               </button>
             </div>
           ) : (
-            <button onClick={runSearch} className="btn-primary px-7 py-2 text-sm">
-              🔍 Search Cars
-            </button>
+            <div className="flex flex-col items-end gap-1">
+              {searchError && <p className="text-red-400 text-xs">{searchError}</p>}
+              <button
+                onClick={runSearch}
+                disabled={searching}
+                className="btn-primary px-7 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {searching ? "Searching..." : "🔍 Search Cars"}
+              </button>
+            </div>
           )}
         </div>
       </div>

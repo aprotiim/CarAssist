@@ -36,6 +36,7 @@ class Listing(BaseModel):
     drivetrain: str
     color: str
     source: str
+    url: str = ""
     dealer: str
     dealer_type: str   # "dealer" | "private"
     score: float

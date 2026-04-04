@@ -7,9 +7,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from backend.routers import chat, search, preferences
+from backend.routers import chat, search, preferences, auth
+from backend.database import init_db
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+
+# Startup key check
+import logging
+logging.basicConfig(level=logging.INFO)
+_log = logging.getLogger(__name__)
+_log.info("EXA_API_KEY loaded: %s", "YES" if os.getenv("EXA_API_KEY") else "NO — check backend/.env")
+_log.info("ANTHROPIC_API_KEY loaded: %s", "YES" if os.getenv("ANTHROPIC_API_KEY") else "NO")
+
+init_db()
 
 app = FastAPI(
     title="CarAssist API",
@@ -18,7 +28,7 @@ app = FastAPI(
 )
 
 # CORS — allow the Next.js dev server and production frontend
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -28,6 +38,7 @@ app.add_middleware(
 )
 
 # Routers
+app.include_router(auth.router)
 app.include_router(chat.router)
 app.include_router(search.router)
 app.include_router(preferences.router)
@@ -36,7 +47,7 @@ app.include_router(preferences.router)
 @app.get("/")
 async def root():
     return {
-        "service": "CarAssist API",
+        "service": "CarAssist API",3000
         "version": "0.1.0",
         "docs": "/docs",
         "status": "ok",

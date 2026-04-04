@@ -220,6 +220,46 @@ RAG_CONTENT: dict[str, str] = {
         "**Pro tip:** Search the exact year/make/model/trim within 200 miles to see what others are asking. "
         "The market price is what matters, not what any guide says."
     ),
+
+    "beginner_guide": (
+        "**The Beginner's Guide to Buying a Used Car — A Strategic Framework for First-Time Buyers**\n\n"
+        "Buying a used car can feel like a high-stakes gamble, but by following a structured 'Data-First' approach, "
+        "you can eliminate 90% of the risk. This guide breaks the process into four manageable phases.\n\n"
+
+        "**Phase 1: The Virtual Screening (Before You Visit)**\n"
+        "Don't fall in love with a photo. Use the listing data to verify the car's 'Digital Health' first.\n"
+        "- The 17-Digit VIN: This is the car's social security number. If a seller won't give it to you, walk away.\n"
+        "- The Title Status: You are looking for a Clean Title. Avoid 'Salvage' or 'Rebuilt' titles — these indicate "
+        "the car was once declared a total loss by an insurance company.\n"
+        "- The 'Odometer Gap': Check the service records against the current mileage. If a car has 100,000 miles but "
+        "the last recorded service was at 40,000, there is a massive gap in its history.\n\n"
+
+        "**Phase 2: The Physical Audit (The 5-Minute Walkaround)**\n"
+        "Once you meet the seller, perform these high-leverage checks before even starting the engine.\n"
+        "- The 'Fluid Check': Pull the oil dipstick. If the oil is milky or has bubbles, it could mean a blown head gasket.\n"
+        "- The Tire Date Code: Look for a 4-digit number on the tire wall (e.g., 1222 = 12th week of 2022). "
+        "Tires older than 6 years are unsafe regardless of tread depth.\n"
+        "- Body Panel Gaps: Ensure the gaps between the doors, hood, and trunk are even. Uneven gaps are a classic "
+        "sign of a hidden accident and frame repair.\n\n"
+
+        "**Phase 3: The Transaction Protocol (The Paperwork)**\n"
+        "In Texas (and most other states), the paperwork makes the sale legal. Ensure you have:\n"
+        "- The Original Blue Title: Ensure the name on the front matches the seller's ID.\n"
+        "- Form 130-U: Application for Title and Registration — both parties must sign.\n"
+        "- Bill of Sale: Lists the VIN, purchase price, date, and signatures of both parties.\n\n"
+
+        "**Phase 4: The Walk-Away Checklist**\n"
+        "If you encounter any of the following, do not negotiate — simply leave.\n"
+        "- The Seller isn't the Owner: If the name on the title doesn't match the person in front of you, "
+        "this is 'Title Flipping' — often illegal and highly risky.\n"
+        "- The Check Engine Light is On: Even if the seller says 'it's just a sensor,' do not take the risk "
+        "without a professional diagnostic.\n"
+        "- The VIN Plate is Damaged: If the VIN plate on the dashboard looks tampered with, the car may be stolen.\n\n"
+
+        "**Final Expert Tip — The PPI:**\n"
+        "Always invest $150–$200 in a Pre-Purchase Inspection (PPI) at a local mechanic. "
+        "This small investment can save you thousands in hidden repairs later."
+    ),
 }
 
 SYSTEM_PROMPT = """You are CarAssist, an expert AI assistant helping used car buyers in the USA make smart, confident purchasing decisions.

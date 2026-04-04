@@ -1,6 +1,5 @@
 """
-RAG service — keyword-based retrieval for Phase 1.
-Phase 3 will upgrade this to ChromaDB vector search.
+RAG service — semantic search via Pinecone, keyword fallback if not configured.
 """
 from backend.data.rag_content import RAG_CONTENT
 
@@ -16,19 +15,31 @@ KEYWORD_MAP: dict[str, list[str]] = {
     "warranty":     ["warranty", "cpo", "certified", "extended", "coverage"],
     "postpurchase": ["after buy", "registr", "post", "bought"],
     "ev":           ["electric", "ev", "battery", "charging", "hybrid", "tesla"],
-    "pricing":      ["kbb", "kelley", "edmunds", "nada", "value", "worth", "pricing"],
+    "pricing":        ["kbb", "kelley", "edmunds", "nada", "value", "worth", "pricing"],
+    "beginner_guide": ["beginner", "first time", "first-time", "new to", "guide", "framework", "steps", "phase", "walkaround", "paperwork", "130-u", "virtual screening"],
 }
 
 
 def retrieve(query: str) -> tuple[str | None, str | None]:
     """
-    Returns (topic_id, content) for the best-matching topic,
-    or (None, None) if no topic matches the query.
+    Returns (topic_id, content) for the best match.
+    Tries Pinecone semantic search first, falls back to keyword matching.
     """
+    # Pinecone semantic search
+    try:
+        from backend.services import pinecone_service
+        content = pinecone_service.retrieve(query)
+        if content:
+            return "semantic", content
+    except Exception:
+        pass
+
+    # Keyword fallback
     lower = query.lower()
     for topic, keywords in KEYWORD_MAP.items():
         if any(kw in lower for kw in keywords):
             return topic, RAG_CONTENT[topic]
+
     return None, None
 
 

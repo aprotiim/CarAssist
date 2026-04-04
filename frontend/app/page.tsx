@@ -5,17 +5,17 @@ export default function HomePage() {
     <div className="text-center pt-16">
       {/* Hero */}
       <div
-        className="text-[52px] mb-4"
+        className="text-[72px] mb-5"
         style={{ filter: "drop-shadow(0 0 20px rgba(16,185,129,0.3))" }}
       >
-        🔮
+        🚗
       </div>
-      <h1 className="font-mono text-4xl font-bold text-white leading-tight mb-3">
+      <h1 className="font-mono text-5xl font-bold text-white leading-tight mb-4">
         Buy your next car
         <br />
         <span className="text-sage-300">with confidence</span>
       </h1>
-      <p className="text-muted text-base max-w-md mx-auto mb-10 leading-relaxed">
+      <p className="text-muted text-lg max-w-lg mx-auto mb-10 leading-relaxed">
         AI-powered search across every major marketplace. Expert buying guidance at your fingertips.
         No dealership pressure.
       </p>
@@ -49,9 +49,9 @@ export default function HomePage() {
           },
         ].map((f) => (
           <div key={f.title} className="card text-center">
-            <div className="text-3xl mb-2.5">{f.icon}</div>
-            <p className="font-bold text-[15px] text-white mb-1.5">{f.title}</p>
-            <p className="text-sm text-muted leading-relaxed">{f.desc}</p>
+            <div className="text-4xl mb-3">{f.icon}</div>
+            <p className="font-bold text-lg text-white mb-2">{f.title}</p>
+            <p className="text-base text-muted leading-relaxed">{f.desc}</p>
           </div>
         ))}
       </div>
@@ -64,8 +64,8 @@ export default function HomePage() {
           { stat: "100%",  label: "Free to use"            },
         ].map((s) => (
           <div key={s.stat} className="card text-center py-4">
-            <p className="font-mono text-2xl font-bold text-sage-300">{s.stat}</p>
-            <p className="text-xs text-muted mt-1">{s.label}</p>
+            <p className="font-mono text-3xl font-bold text-sage-300">{s.stat}</p>
+            <p className="text-sm text-muted mt-1">{s.label}</p>
           </div>
         ))}
       </div>

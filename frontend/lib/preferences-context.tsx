@@ -10,6 +10,9 @@ interface PreferencesContextValue {
   toggle: (arr: string[], val: string) => string[];
   results: Listing[];
   setResults: (listings: Listing[]) => void;
+  totalResults: number;
+  sourcesSearched: number;
+  setSearchMeta: (total: number, sources: number) => void;
   savedIds: Set<number>;
   toggleSaved: (id: number) => void;
   step: number;
@@ -21,8 +24,15 @@ const PreferencesContext = createContext<PreferencesContextValue | null>(null);
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
   const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFERENCES);
   const [results, setResults] = useState<Listing[]>([]);
+  const [totalResults, setTotalResults] = useState(0);
+  const [sourcesSearched, setSourcesSearched] = useState(0);
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
   const [step, setStep] = useState(0);
+
+  const setSearchMeta = (total: number, sources: number) => {
+    setTotalResults(total);
+    setSourcesSearched(sources);
+  };
 
   const setPref = <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
     setPrefs((p) => ({ ...p, [key]: value }));
@@ -41,7 +51,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
 
   return (
     <PreferencesContext.Provider
-      value={{ prefs, setPref, toggle, results, setResults, savedIds, toggleSaved, step, setStep }}
+      value={{ prefs, setPref, toggle, results, setResults, totalResults, sourcesSearched, setSearchMeta, savedIds, toggleSaved, step, setStep }}
     >
       {children}
     </PreferencesContext.Provider>
