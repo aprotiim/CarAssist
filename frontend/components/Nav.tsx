@@ -44,7 +44,7 @@ export default function Nav() {
         </svg>
         <div className="flex flex-col leading-none">
           <span className="font-bold text-white text-[18px] tracking-tight">
-            Car<span className="text-sage-300">genuity</span>
+            Car<span className="text-sage-300">Genuity</span>
           </span>
           <span className="text-[9px] text-muted tracking-widest uppercase">Buy with Confidence</span>
         </div>

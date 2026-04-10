@@ -68,7 +68,7 @@ function LoginForm() {
               strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
           <h1 className="font-bold text-2xl text-white tracking-tight">
-            Car<span className="text-sage-300">Assist</span>
+            Car<span className="text-sage-300">Genuity</span>
           </h1>
           <p className="text-muted text-sm mt-1">
             {tab === "login" ? "Sign in to continue" : "Create your account"}

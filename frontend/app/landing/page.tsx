@@ -25,7 +25,7 @@ export default function LandingPage() {
         </svg>
 
         <h1 className="font-bold text-5xl text-white tracking-tight mb-1">
-          Car<span className="text-sage-300">Assist</span>
+          Car<span className="text-sage-300">Genuity</span>
         </h1>
         <p className="text-muted text-sm tracking-widest uppercase">Buy with Confidence</p>
       </div>
