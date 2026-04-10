@@ -1,12 +1,12 @@
 """
 SQLite database setup using SQLAlchemy.
-DB file is created at backend/carassist.db automatically on startup.
+DB file is created at backend/cargenuity.db automatically on startup.
 """
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "carassist.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "cargenuity.db")
 DATABASE_URL = f"sqlite:///{DB_PATH}"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})

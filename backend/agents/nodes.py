@@ -1,5 +1,5 @@
 """
-LangGraph node functions for the CarAssist multi-agent pipeline.
+LangGraph node functions for the Cargenuity multi-agent pipeline.
 
 Nodes:
   router_node     — classifies intent and extracts structured search preferences
@@ -13,7 +13,7 @@ import json
 import anthropic
 from langchain_core.messages import AIMessage, HumanMessage
 
-from backend.agents.state import CarAssistState
+from backend.agents.state import CargenuityState
 
 
 # ---------------------------------------------------------------------------
@@ -28,7 +28,7 @@ def _get_client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=api_key)
 
 
-def _last_user_message(state: CarAssistState) -> str:
+def _last_user_message(state: CargenuityState) -> str:
     """Return the content of the most recent HumanMessage."""
     for msg in reversed(state["messages"]):
         if isinstance(msg, HumanMessage):
@@ -50,7 +50,7 @@ def _format_listing(listing: dict) -> str:
 # 1. Router node
 # ---------------------------------------------------------------------------
 
-async def router_node(state: CarAssistState) -> dict:
+async def router_node(state: CargenuityState) -> dict:
     """Classify the user's intent and extract search preferences."""
     user_message = _last_user_message(state)
 
@@ -125,7 +125,7 @@ Intent rules:
 # 2. Search node
 # ---------------------------------------------------------------------------
 
-async def search_node(state: CarAssistState) -> dict:
+async def search_node(state: CargenuityState) -> dict:
     """Fetch real car listings via Exa web search."""
     try:
         from backend.services import exa_service
@@ -141,7 +141,7 @@ async def search_node(state: CarAssistState) -> dict:
 # 3. RAG node
 # ---------------------------------------------------------------------------
 
-async def rag_node(state: CarAssistState) -> dict:
+async def rag_node(state: CargenuityState) -> dict:
     """Retrieve relevant knowledge via Pinecone semantic search, keyword fallback."""
     try:
         from backend.services import rag_service
@@ -170,7 +170,7 @@ async def rag_node(state: CarAssistState) -> dict:
 # 4. Analysis node
 # ---------------------------------------------------------------------------
 
-async def analysis_node(state: CarAssistState) -> dict:
+async def analysis_node(state: CargenuityState) -> dict:
     """Perform deep analysis of a single listing using Claude."""
     try:
         from backend.data.mock_listings import MOCK_LISTINGS
@@ -259,9 +259,9 @@ Provide:
 # 5. Synthesis node
 # ---------------------------------------------------------------------------
 
-async def synthesis_node(state: CarAssistState) -> dict:
+async def synthesis_node(state: CargenuityState) -> dict:
     """Produce the final user-facing response by synthesising all gathered context."""
-    synthesis_system = """You are CarAssist, an expert AI assistant for used car buyers in the USA.
+    synthesis_system = """You are Cargenuity, an expert AI assistant for used car buyers in the USA.
 Be concise, practical, and direct. Format responses clearly.
 When showing car listings, format them as a clean numbered list.
 When answering buying questions, be specific and actionable.

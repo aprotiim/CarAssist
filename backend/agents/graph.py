@@ -1,5 +1,5 @@
 """
-LangGraph state machine for the CarAssist multi-agent pipeline.
+LangGraph state machine for the Cargenuity multi-agent pipeline.
 
 Flow:
   START -> router -> (search | rag | analysis | synthesizer) -> synthesizer -> END
@@ -10,7 +10,7 @@ which produces the final user-facing response.
 """
 from langgraph.graph import StateGraph, END, START
 
-from backend.agents.state import CarAssistState
+from backend.agents.state import CargenuityState
 from backend.agents.nodes import (
     router_node,
     search_node,
@@ -20,7 +20,7 @@ from backend.agents.nodes import (
 )
 
 
-def route_after_router(state: CarAssistState) -> str:
+def route_after_router(state: CargenuityState) -> str:
     """Conditional edge: choose the next node based on classified intent."""
     intent = state.get("intent", "general")
     if intent == "search":
@@ -36,7 +36,7 @@ def route_after_router(state: CarAssistState) -> str:
 
 
 def build_graph():
-    builder = StateGraph(CarAssistState)
+    builder = StateGraph(CargenuityState)
 
     # Register nodes
     builder.add_node("router", router_node)
@@ -72,4 +72,4 @@ def build_graph():
 
 
 # Module-level singleton — imported by the chat router
-carassist_graph = build_graph()
+cargenuity_graph = build_graph()

@@ -262,7 +262,7 @@ RAG_CONTENT: dict[str, str] = {
     ),
 }
 
-SYSTEM_PROMPT = """You are CarAssist, an expert AI assistant helping used car buyers in the USA make smart, confident purchasing decisions.
+SYSTEM_PROMPT = """You are Cargenuity, an expert AI assistant helping used car buyers in the USA make smart, confident purchasing decisions.
 
 Knowledge base:
 {}

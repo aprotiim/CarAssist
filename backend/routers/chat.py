@@ -1,5 +1,5 @@
 """
-Chat router — LangGraph-powered endpoints for the CarAssist assistant.
+Chat router — LangGraph-powered endpoints for the Cargenuity assistant.
 
 Endpoints:
   POST /api/chat          — invoke the full multi-agent graph, return final response
@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, Query
 from langchain_core.messages import HumanMessage, AIMessage
 
 from backend.models.schemas import ChatRequest, ChatResponse
-from backend.agents.graph import carassist_graph
+from backend.agents.graph import cargenuity_graph
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -55,7 +55,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
             initial_state["messages"] = [AIMessage(content=msg.content)] + initial_state["messages"]
 
     try:
-        result = await carassist_graph.ainvoke(initial_state)
+        result = await cargenuity_graph.ainvoke(initial_state)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Graph execution error: {exc}")
 
@@ -122,7 +122,7 @@ async def chat_stream(
             # We'll run a partial graph up to but not including synthesis,
             # then stream synthesis ourselves.
             # For simplicity: run the full graph silently, then re-stream via Anthropic streaming.
-            result = await carassist_graph.ainvoke(initial_state)
+            result = await cargenuity_graph.ainvoke(initial_state)
 
             listings = result.get("listings") or []
             rag_context = result.get("rag_context") or ""
@@ -161,7 +161,7 @@ async def chat_stream(
             stream_messages.append({"role": "user", "content": user_content})
 
             system_prompt = (
-                "You are CarAssist, an expert AI assistant for used car buyers in the USA. "
+                "You are Cargenuity, an expert AI assistant for used car buyers in the USA. "
                 "Be concise, practical, and direct. Format responses clearly. "
                 "When showing car listings, format them as a clean numbered list. "
                 "When answering buying questions, be specific and actionable. "

@@ -1,5 +1,5 @@
 """
-CarAssist FastAPI backend — Phase 1
+Cargenuity FastAPI backend — Phase 1
 Run with: uvicorn backend.main:app --reload --port 8000
 """
 import os
@@ -8,7 +8,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from backend.routers import chat, search, preferences, auth
-from backend.database import init_db
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
@@ -18,11 +17,10 @@ logging.basicConfig(level=logging.INFO)
 _log = logging.getLogger(__name__)
 _log.info("EXA_API_KEY loaded: %s", "YES" if os.getenv("EXA_API_KEY") else "NO — check backend/.env")
 _log.info("ANTHROPIC_API_KEY loaded: %s", "YES" if os.getenv("ANTHROPIC_API_KEY") else "NO")
-
-init_db()
+_log.info("S3_USERS_BUCKET: %s", os.getenv("S3_USERS_BUCKET") or "NOT SET — check backend/.env")
 
 app = FastAPI(
-    title="CarAssist API",
+    title="Cargenuity API",
     description="AI-powered used car buying assistant backend",
     version="0.1.0",
 )
@@ -47,7 +45,7 @@ app.include_router(preferences.router)
 @app.get("/")
 async def root():
     return {
-        "service": "CarAssist API",3000
+        "service": "Cargenuity API",
         "version": "0.1.0",
         "docs": "/docs",
         "status": "ok",
