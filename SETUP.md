@@ -1,4 +1,4 @@
-# AutoSage — MVP Setup Guide
+# Cargenuity — MVP Setup Guide
 
 ## Prerequisites
 - Node.js 18+
@@ -113,9 +113,9 @@ MYRealProduct/
 └── backend/
     ├── main.py                     FastAPI app + CORS
     ├── agents/
-    │   ├── state.py                AutoSageState TypedDict
+    │   ├── state.py                CargenuityState TypedDict
     │   ├── nodes.py                5 async node functions
-    │   └── graph.py                LangGraph StateGraph + autosage_graph singleton
+    │   └── graph.py                LangGraph StateGraph + cargenuity_graph singleton
     ├── routers/
     │   ├── chat.py                 POST /api/chat, GET /api/chat/stream (SSE)
     │   ├── search.py               POST /api/search, GET /api/listings/:id, POST analyze
@@ -158,7 +158,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000   # optional
 **backend/.env**
 ```
 ANTHROPIC_API_KEY=sk-ant-...
-DATABASE_URL=postgresql://user:pass@localhost:5432/autosage
+DATABASE_URL=postgresql://user:pass@localhost:5432/cargenuity
 REDIS_URL=redis://localhost:6379
 ALLOWED_ORIGINS=http://localhost:3000
 ```

@@ -4,7 +4,7 @@ import Nav from "@/components/Nav";
 import { PreferencesProvider } from "@/lib/preferences-context";
 
 export const metadata: Metadata = {
-  title: "CarAssist — AI-Powered Used Car Buying Assistant",
+  title: "Cargenuity — AI-Powered Used Car Buying Assistant",
   description:
     "Buy your next used car with confidence. AI-powered search across every major marketplace with expert buying guidance.",
 };

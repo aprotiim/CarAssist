@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
-  const isLoggedIn = request.cookies.has("carassist_auth");
+  const isLoggedIn = request.cookies.has("cargenuity_auth");
   const { pathname } = request.nextUrl;
 
   // Public routes — always allowed

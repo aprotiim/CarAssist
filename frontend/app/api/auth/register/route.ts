@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   const user = await backendRes.json();
 
   const response = NextResponse.json({ ok: true, user });
-  response.cookies.set("carassist_auth", String(user.id), {
+  response.cookies.set("cargenuity_auth", String(user.id), {
     httpOnly: true,
     sameSite: "lax",
     path: "/",

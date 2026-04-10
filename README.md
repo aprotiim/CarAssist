@@ -1,6 +1,6 @@
-# CarAssist — AI-Powered Used Car Buying Assistant
+# Cargenuity — AI-Powered Used Car Buying Assistant
 
-CarAssist helps you find, evaluate, and buy used cars with confidence. It searches 9+ major marketplaces simultaneously, scores every deal with AI, and gives you expert buying guidance — all in one place.
+Cargenuity helps you find, evaluate, and buy used cars with confidence. It searches 9+ major marketplaces simultaneously, scores every deal with AI, and gives you expert buying guidance — all in one place.
 
 ---
 
@@ -80,8 +80,8 @@ MYRealProduct/
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-username/carassist.git
-cd carassist
+git clone https://github.com/your-username/cargenuity.git
+cd cargenuity
 ```
 
 ### 2. Backend setup

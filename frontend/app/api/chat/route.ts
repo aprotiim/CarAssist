@@ -2,7 +2,7 @@ import { streamText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { RAG_CONTENT } from "@/lib/constants";
 
-const SYSTEM_PROMPT = `You are CarAssist, an expert AI assistant helping first-time and experienced used car buyers in the USA make smart, confident purchasing decisions.
+const SYSTEM_PROMPT = `You are Cargenuity, an expert AI assistant helping first-time and experienced used car buyers in the USA make smart, confident purchasing decisions.
 
 You have deep knowledge of the used car buying process. Here is your knowledge base:
 
