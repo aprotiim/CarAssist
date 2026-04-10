@@ -20,8 +20,6 @@ Guidelines:
 - If asked something outside used car buying, politely redirect to your area of expertise.
 - Keep responses under 400 words unless the user asks for more detail.`;
 
-export const runtime = "edge";
-
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();

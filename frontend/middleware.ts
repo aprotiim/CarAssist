@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes — always allowed
-  if (pathname.startsWith("/api/auth") || pathname === "/landing") {
+  if (pathname.startsWith("/api/") || pathname === "/landing") {
     return NextResponse.next();
   }
 
