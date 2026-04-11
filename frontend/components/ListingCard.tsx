@@ -38,9 +38,7 @@ export default function ListingCard({ car, saved, onToggleSave }: ListingCardPro
         <p className="text-xs text-dark-300 mt-1">
           {car.dealer} · via {car.source} · {car.dealerType === "dealer" ? "Dealer" : "Private"}
           {car.url && (
-            <span className="ml-2 text-sage-300/60">
-              · {car.url.includes("search") || car.url.includes("shopping") || car.url.includes("cars-for-sale") || car.url.includes("/cars/") ? "Search on site →" : "View listing →"}
-            </span>
+            <span className="ml-2 text-sage-300/60">· View listing →</span>
           )}
         </p>
         <ScoreBar score={car.score} />

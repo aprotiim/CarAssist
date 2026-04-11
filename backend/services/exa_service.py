@@ -174,7 +174,9 @@ def _exa_search(preferences: dict) -> tuple[list[dict], int]:
         from backend.data.mock_listings import MOCK_LISTINGS
         return _filter_mock(MOCK_LISTINGS, preferences), 0
 
-    return listings, sites_with_results
+    filtered = _filter_mock(listings, preferences)
+    logger.info("After preference filtering: %d/%d listings remain", len(filtered), len(listings))
+    return filtered, sites_with_results
 
 
 def _build_query(prefs: dict) -> str:
@@ -326,11 +328,9 @@ def _parse_with_claude(raw: list[dict]) -> list[dict]:
 
 
 def _listing_url(raw_url: str, make: str, model: str, year: int) -> str:
-    """
-    Return a reliable search URL for this listing.
-    Individual listing pages expire when cars sell, and platform URL formats change.
-    We always return a Google search URL for the specific car — guaranteed to work.
-    """
+    """Return the original listing URL from Exa. Falls back to a site-search URL if missing."""
+    if raw_url and raw_url.startswith("http"):
+        return raw_url
     from urllib.parse import urlencode
     query = urlencode({"q": f"{year} {make} {model} used car for sale"})
     return f"https://www.google.com/search?{query}"
