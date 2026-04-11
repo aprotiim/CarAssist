@@ -271,11 +271,16 @@ def _parse_batch(client, raw_batch: list[dict], id_offset: int) -> list[dict]:
             year = int(l.get("year") or 2020)
             mileage = int(l.get("mileage") or 0)
             body = l.get("body") or "Sedan"
+            make = str(l.get("make") or "Unknown")
+            model = str(l.get("model") or "Unknown")
+            source = l.get("source") or "Web"
+            raw_url = l.get("url") or ""
+            url = _listing_url(raw_url, source, make, model, year)
             result.append({
                 "id": id_offset + i + 1,
                 "year": year,
-                "make": str(l.get("make") or "Unknown"),
-                "model": str(l.get("model") or "Unknown"),
+                "make": make,
+                "model": model,
                 "price": price,
                 "mileage": mileage,
                 "fuel": l.get("fuel") or "Gasoline",
@@ -283,8 +288,8 @@ def _parse_batch(client, raw_batch: list[dict], id_offset: int) -> list[dict]:
                 "transmission": l.get("transmission") or "Automatic",
                 "drivetrain": l.get("drivetrain") or "FWD",
                 "color": l.get("color") or "Unknown",
-                "source": l.get("source") or "Web",
-                "url": l.get("url") or "",
+                "source": source,
+                "url": url,
                 "dealer": l.get("dealer") or "Dealer",
                 "dealer_type": l.get("dealer_type") or "dealer",
                 "score": _score(year, mileage),
@@ -318,6 +323,47 @@ def _parse_with_claude(raw: list[dict]) -> list[dict]:
             logger.warning("_parse_with_claude: batch %d failed: %s", i, e)
 
     return all_listings
+
+
+def _listing_url(raw_url: str, source: str, make: str, model: str, year: int) -> str:
+    """
+    Return a reliable URL for this listing.
+    Individual listing pages expire when cars sell; category/search pages stay valid.
+    We check if the raw URL looks like a real individual listing — if not, we build
+    a platform search URL so the user always lands on a relevant, working page.
+    """
+    import re
+    # Patterns that indicate a real individual listing page (contains a unique ID)
+    individual_patterns = [
+        r"/vehicledetail/",          # cars.com
+        r"/car-details/[a-z0-9]+",   # carmax
+        r"/vehicle/[a-z0-9-]+-\d+",  # carvana
+        r"listing[_-]?id=\d+",       # cargurus param
+        r"/cars-for-sale/.*-\d{6,}", # autotrader listing ID in slug
+        r"/inventorydetails/",        # various dealers
+        r"/vin/[A-Z0-9]{17}",        # VIN-based
+    ]
+    for pattern in individual_patterns:
+        if re.search(pattern, raw_url, re.IGNORECASE):
+            return raw_url  # looks like a real individual listing
+
+    # Build a targeted search URL on the platform instead
+    m = make.lower().replace(" ", "-").replace("/", "-")
+    mo = model.lower().split()[0].replace(" ", "-").replace("/", "-")  # first word of model
+
+    search_urls = {
+        "Cars.com":    f"https://www.cars.com/shopping/{m}-{mo}/?year_min={year}&year_max={year}",
+        "Autotrader":  f"https://www.autotrader.com/cars-for-sale/used-cars/{m}/{mo}/?startYear={year}&endYear={year}",
+        "CarGurus":    f"https://www.cargurus.com/Cars/new/nl_{make.replace(' ', '_')}_{model.split()[0].replace(' ', '_')}",
+        "CarMax":      f"https://www.carmax.com/cars/{m}/{mo}",
+        "Carvana":     f"https://www.carvana.com/cars/{m}?year-min={year}&year-max={year}",
+        "TrueCar":     f"https://www.truecar.com/used-cars-for-sale/listings/{m}/{mo}/?year[]={year}",
+        "Edmunds":     f"https://www.edmunds.com/{m}/{mo}/{year}/vin/",
+        "Vroom":       f"https://www.vroom.com/cars?year_min={year}&year_max={year}&make={make}",
+        "Craigslist":  f"https://www.craigslist.org/search/cto?query={make}+{model}&min_auto_year={year}&max_auto_year={year}",
+    }
+    fallback = search_urls.get(source)
+    return fallback if fallback else raw_url
 
 
 def _score(year: int, mileage: int) -> int:
