@@ -17,6 +17,14 @@ export default function WizardPage() {
   const [searchError, setSearchError] = useState("");
 
   const runSearch = async () => {
+    if (!prefs.zip.trim()) {
+      setSearchError("Zip code is required to search.");
+      return;
+    }
+    if (!/^\d{5}$/.test(prefs.zip.trim())) {
+      setSearchError("Please enter a valid 5-digit zip code.");
+      return;
+    }
     setSearching(true);
     setSearchError("");
     try {
@@ -129,9 +137,26 @@ export default function WizardPage() {
     ),
     location: (
       <div>
-        <label className="label">Zip Code</label>
-        <input type="text" placeholder="e.g. 32601" value={prefs.zip}
-          onChange={e => setPref("zip", e.target.value)} className="input-field mb-4" />
+        <label className="label">
+          Zip Code <span className="text-red-400">*</span>
+        </label>
+        <input
+          type="text"
+          placeholder="e.g. 32601"
+          value={prefs.zip}
+          onChange={e => setPref("zip", e.target.value)}
+          className={`input-field mb-1 ${!prefs.zip.trim() ? "border-red-400/50" : ""}`}
+          maxLength={5}
+          inputMode="numeric"
+          pattern="\d{5}"
+        />
+        {!prefs.zip.trim() && (
+          <p className="text-red-400 text-xs mb-3">Required — used to find cars near you</p>
+        )}
+        {prefs.zip.trim() && !/^\d{5}$/.test(prefs.zip.trim()) && (
+          <p className="text-red-400 text-xs mb-3">Enter a valid 5-digit zip code</p>
+        )}
+        <div className="mb-4" />
         <label className="label">Search Radius</label>
         <input type="range" min={10} max={500} step={10} value={prefs.radius}
           onChange={e => setPref("radius", +e.target.value)} className="w-full" />

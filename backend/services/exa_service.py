@@ -21,6 +21,10 @@ def _filter_mock(listings, preferences: dict) -> list[dict]:
     fuel_types    = [f.lower() for f in (preferences.get("fuel_types") or [])]
     transmissions = [t.lower() for t in (preferences.get("transmissions") or [])]
     drivetrains   = [d.lower() for d in (preferences.get("drivetrains") or [])]
+    zip_code      = (preferences.get("zip_code") or "").strip()
+    # radius_miles is noted but mock data lacks lat/lng for true geo-distance;
+    # we approximate by matching the first 3 zip digits (same metro area).
+    zip_prefix    = zip_code[:3] if len(zip_code) == 5 else ""
 
     results = []
     for l in listings:
@@ -40,6 +44,9 @@ def _filter_mock(listings, preferences: dict) -> list[dict]:
         if transmissions and d["transmission"].lower() not in transmissions:
             continue
         if drivetrains and d["drivetrain"].lower() not in drivetrains:
+            continue
+        # Location: approximate match on first 3 zip digits when zip is provided
+        if zip_prefix and d.get("zip", "")[:3] != zip_prefix:
             continue
         results.append(d)
     return results
@@ -110,27 +117,47 @@ def _exa_search(preferences: dict) -> tuple[list[dict], int]:
             logger.warning("Exa failed for %s: %s", domain, e)
             return []
 
+    from concurrent.futures import TimeoutError as FuturesTimeoutError
+
     with ThreadPoolExecutor(max_workers=len(DOMAINS)) as pool:
         futures = {pool.submit(_search_domain, d): d for d in DOMAINS}
-        for future in as_completed(futures, timeout=10):
-            try:
-                domain_results = future.result()
-            except Exception:
-                domain_results = []
-            if domain_results:
-                sites_with_results += 1
-            all_results.extend(domain_results)
+        try:
+            for future in as_completed(futures, timeout=25):
+                try:
+                    domain_results = future.result()
+                except Exception:
+                    domain_results = []
+                if domain_results:
+                    sites_with_results += 1
+                all_results.extend(domain_results)
+        except FuturesTimeoutError:
+            # Collect whatever completed before the timeout instead of failing
+            logger.warning("Exa timed out after 25s — using %d results collected so far", len(all_results))
+            for f in futures:
+                if f.done() and not f.exception():
+                    try:
+                        r = f.result()
+                        if r:
+                            all_results.extend(r)
+                            sites_with_results += 1
+                    except Exception:
+                        pass
 
     logger.info("Exa returned %d total results from %d/%d sites", len(all_results), sites_with_results, len(DOMAINS))
 
     if not all_results:
+        logger.warning("Exa returned no results — falling back to filtered mock listings")
         from backend.data.mock_listings import MOCK_LISTINGS
-        return [l.model_dump() for l in MOCK_LISTINGS], 0
+        return _filter_mock(MOCK_LISTINGS, preferences), 0
 
     raw = []
     for r in all_results:
+        # highlights may be strings or Highlight objects — extract text safely
         highlights = getattr(r, "highlights", None) or []
-        highlight_text = " | ".join(highlights) if highlights else ""
+        highlight_parts = []
+        for h in highlights:
+            highlight_parts.append(h if isinstance(h, str) else getattr(h, "text", str(h)))
+        highlight_text = " | ".join(highlight_parts)
         text = (r.text or "")[:2000]
         combined = f"{highlight_text}\n\n{text}".strip() if highlight_text else text
         raw.append({
@@ -143,8 +170,9 @@ def _exa_search(preferences: dict) -> tuple[list[dict], int]:
     listings = _parse_with_claude(raw)
 
     if not listings:
+        logger.warning("Claude could not parse Exa results — falling back to filtered mock listings")
         from backend.data.mock_listings import MOCK_LISTINGS
-        return [l.model_dump() for l in MOCK_LISTINGS], 0
+        return _filter_mock(MOCK_LISTINGS, preferences), 0
 
     return listings, sites_with_results
 
