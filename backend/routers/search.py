@@ -26,6 +26,10 @@ async def search(prefs: SearchPreferences) -> SearchResponse:
         "year_min": prefs.year_min,
         "year_max": prefs.year_max,
         "max_mileage": prefs.max_mileage,
+        "transmissions": prefs.transmissions,
+        "drivetrains": prefs.drivetrains,
+        "zip_code": prefs.zip_code,
+        "radius_miles": prefs.radius_miles,
     }
 
     listings, sites_searched = await exa_service.search_listings(prefs_dict)

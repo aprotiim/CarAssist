@@ -9,6 +9,42 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _filter_mock(listings, preferences: dict) -> list[dict]:
+    """Filter mock listings by user preferences. Empty list = no filter applied for that field."""
+    budget_min    = preferences.get("budget_min") or 0
+    budget_max    = preferences.get("budget_max") or 10_000_000
+    year_min      = preferences.get("year_min") or 0
+    year_max      = preferences.get("year_max") or 9999
+    max_mileage   = preferences.get("max_mileage") or 10_000_000
+    brands        = [b.lower() for b in (preferences.get("brands") or [])]
+    body_types    = [b.lower() for b in (preferences.get("body_types") or [])]
+    fuel_types    = [f.lower() for f in (preferences.get("fuel_types") or [])]
+    transmissions = [t.lower() for t in (preferences.get("transmissions") or [])]
+    drivetrains   = [d.lower() for d in (preferences.get("drivetrains") or [])]
+
+    results = []
+    for l in listings:
+        d = l.model_dump() if hasattr(l, "model_dump") else l
+        if not (budget_min <= d["price"] <= budget_max):
+            continue
+        if not (year_min <= d["year"] <= year_max):
+            continue
+        if d["mileage"] > max_mileage:
+            continue
+        if brands and d["make"].lower() not in brands:
+            continue
+        if body_types and d["body"].lower() not in body_types:
+            continue
+        if fuel_types and d["fuel"].lower() not in fuel_types:
+            continue
+        if transmissions and d["transmission"].lower() not in transmissions:
+            continue
+        if drivetrains and d["drivetrain"].lower() not in drivetrains:
+            continue
+        results.append(d)
+    return results
+
+
 def _get_exa():
     from exa_py import Exa
     api_key = os.getenv("EXA_API_KEY")
@@ -24,16 +60,16 @@ async def search_listings(preferences: dict) -> tuple[list[dict], int]:
 
     # Fast path: skip all network calls if EXA_API_KEY is not configured
     if not os.getenv("EXA_API_KEY"):
-        logger.info("EXA_API_KEY not set — returning mock listings")
+        logger.info("EXA_API_KEY not set — filtering mock listings by preferences")
         from backend.data.mock_listings import MOCK_LISTINGS
-        return [l.model_dump() for l in MOCK_LISTINGS], 0
+        return _filter_mock(MOCK_LISTINGS, preferences), 0
 
     try:
         return await asyncio.get_event_loop().run_in_executor(None, lambda: _exa_search(preferences))
     except Exception as exc:
         logger.error("Exa search failed: %s: %s", type(exc).__name__, exc, exc_info=True)
         from backend.data.mock_listings import MOCK_LISTINGS
-        return [l.model_dump() for l in MOCK_LISTINGS], 0
+        return _filter_mock(MOCK_LISTINGS, preferences), 0
 
 
 DOMAINS = [
