@@ -91,7 +91,11 @@ def _filter_listings(listings, preferences: dict) -> list[dict]:
             continue
         if drivetrains and d.get("drivetrain", "").lower() not in drivetrains:
             continue
-        if zip_prefix and d.get("zip", "")[:3] != zip_prefix:
+        # Only apply zip filter when the listing has an actual zip value.
+        # Real Exa listings have zip="" — location is already handled by the Exa
+        # search query ("near 32601 within 50 miles"). Only mock listings have zip data.
+        listing_zip = d.get("zip", "").strip()
+        if zip_prefix and listing_zip and listing_zip[:3] != zip_prefix:
             continue
         results.append(d)
     return results
