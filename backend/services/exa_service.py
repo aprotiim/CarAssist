@@ -8,6 +8,40 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Canonical values used by the wizard UI — map common Claude variants to these
+_BODY_NORM: dict[str, str] = {
+    "sport utility": "SUV", "sport utility vehicle": "SUV", "crossover": "SUV",
+    "pickup": "Truck", "pickup truck": "Truck",
+    "mini van": "Minivan",
+    "station wagon": "Wagon",
+    "2-door": "Coupe",
+    "cabriolet": "Convertible",
+    "4-door": "Sedan",
+}
+_FUEL_NORM: dict[str, str] = {
+    "gas": "Gasoline", "petrol": "Gasoline", "regular": "Gasoline",
+    "plug-in hybrid": "Plug-in Hybrid", "phev": "Plug-in Hybrid", "plugin hybrid": "Plug-in Hybrid",
+    "ev": "Electric", "battery electric": "Electric", "bev": "Electric",
+}
+_TRANS_NORM: dict[str, str] = {
+    "auto": "Automatic", "dct": "Automatic", "s-tronic": "Automatic", "pdk": "Automatic",
+    "continuously variable": "CVT", "continuously variable transmission": "CVT",
+    "stick": "Manual", "mt": "Manual", "6-speed manual": "Manual", "5-speed manual": "Manual",
+}
+_DRIVE_NORM: dict[str, str] = {
+    "front wheel drive": "FWD", "front-wheel drive": "FWD",
+    "rear wheel drive": "RWD", "rear-wheel drive": "RWD",
+    "all wheel drive": "AWD", "all-wheel drive": "AWD",
+    "4 wheel drive": "4WD", "four wheel drive": "4WD", "4-wheel drive": "4WD",
+    "4x4": "4WD", "awd/4wd": "AWD",
+}
+
+
+def _norm(val: str, norm_map: dict[str, str]) -> str:
+    """Map a raw Claude value to its canonical wizard label, or return as-is."""
+    v = (val or "").strip()
+    return norm_map.get(v.lower(), v)
+
 
 def _filter_mock(listings, preferences: dict) -> list[dict]:
     """Filter mock listings by user preferences. Empty list = no filter applied for that field."""
@@ -272,11 +306,15 @@ def _parse_batch(client, raw_batch: list[dict], id_offset: int) -> list[dict]:
                 continue
             year = int(l.get("year") or 2020)
             mileage = int(l.get("mileage") or 0)
-            body = l.get("body") or "Sedan"
             make = str(l.get("make") or "Unknown")
             model = str(l.get("model") or "Unknown")
             source = l.get("source") or "Web"
             raw_url = l.get("url") or ""
+            # Normalize to canonical wizard values so filters work correctly
+            body         = _norm(l.get("body") or "Sedan",     _BODY_NORM)
+            fuel         = _norm(l.get("fuel") or "Gasoline",  _FUEL_NORM)
+            transmission = _norm(l.get("transmission") or "Automatic", _TRANS_NORM)
+            drivetrain   = _norm(l.get("drivetrain") or "FWD", _DRIVE_NORM)
             url = _listing_url(raw_url, make, model, year)
             result.append({
                 "id": id_offset + i + 1,
@@ -285,10 +323,10 @@ def _parse_batch(client, raw_batch: list[dict], id_offset: int) -> list[dict]:
                 "model": model,
                 "price": price,
                 "mileage": mileage,
-                "fuel": l.get("fuel") or "Gasoline",
+                "fuel": fuel,
                 "body": body,
-                "transmission": l.get("transmission") or "Automatic",
-                "drivetrain": l.get("drivetrain") or "FWD",
+                "transmission": transmission,
+                "drivetrain": drivetrain,
                 "color": l.get("color") or "Unknown",
                 "source": source,
                 "url": url,
@@ -328,12 +366,53 @@ def _parse_with_claude(raw: list[dict]) -> list[dict]:
 
 
 def _listing_url(raw_url: str, make: str, model: str, year: int) -> str:
-    """Return the original listing URL from Exa. Falls back to a site-search URL if missing."""
-    if raw_url and raw_url.startswith("http"):
-        return raw_url
-    from urllib.parse import urlencode
-    query = urlencode({"q": f"{year} {make} {model} used car for sale"})
-    return f"https://www.google.com/search?{query}"
+    """
+    Build a stable search URL on the source platform for this exact make/model/year.
+    Individual listing pages expire when a car sells; platform search pages are permanent
+    and will show the user current inventory for that specific car.
+    """
+    import re
+    make_slug  = re.sub(r"[^a-z0-9]+", "-", make.lower()).strip("-")
+    # Use only the base model name (drop trim like "SE", "XLT") for cleaner search URLs
+    base_model = model.split()[0] if model else model
+    model_slug = re.sub(r"[^a-z0-9]+", "-", base_model.lower()).strip("-")
+
+    if "autotrader" in raw_url:
+        return (f"https://www.autotrader.com/cars-for-sale/used-cars/"
+                f"{make_slug}/{model_slug}/?startYear={year}&endYear={year}")
+
+    if "cars.com" in raw_url:
+        return (f"https://www.cars.com/shopping/results/?"
+                f"makes[]={make_slug}&models[]={make_slug}-{model_slug}"
+                f"&stock_type=used&year_max={year}&year_min={year}")
+
+    if "cargurus" in raw_url:
+        make_cg  = make.replace(" ", "_")
+        model_cg = base_model.replace(" ", "_")
+        return (f"https://www.cargurus.com/Cars/new/nl_{make_cg}_{model_cg}"
+                f"?minYear={year}&maxYear={year}")
+
+    if "carmax" in raw_url:
+        return f"https://www.carmax.com/cars/{make_slug}/{model_slug}"
+
+    if "carvana" in raw_url:
+        return f"https://www.carvana.com/cars/{make_slug}?year={year}"
+
+    if "truecar" in raw_url:
+        return (f"https://www.truecar.com/used-cars-for-sale/listings/"
+                f"{make_slug}/{model_slug}/?year_min={year}&year_max={year}")
+
+    if "edmunds" in raw_url:
+        return (f"https://www.edmunds.com/{make_slug}/{model_slug}/used/"
+                f"?year_min={year}&year_max={year}")
+
+    if "vroom" in raw_url:
+        return (f"https://www.vroom.com/cars?makes={make}&models={base_model}"
+                f"&yearMin={year}&yearMax={year}")
+
+    # Default fallback — Autotrader has the most reliable URL structure
+    return (f"https://www.autotrader.com/cars-for-sale/used-cars/"
+            f"{make_slug}/{model_slug}/?startYear={year}&endYear={year}")
 
 
 def _score(year: int, mileage: int) -> int:
