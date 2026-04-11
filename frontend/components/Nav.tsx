@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 const links = [
   { href: "/wizard",  label: "Search" },
@@ -11,12 +11,10 @@ const links = [
 
 export default function Nav() {
   const pathname = usePathname();
-  const router = useRouter();
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
+    window.location.href = "/login";
   }
 
   // Don't render nav on login or landing page

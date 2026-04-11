@@ -19,8 +19,15 @@ def _get_exa():
 
 async def search_listings(preferences: dict) -> tuple[list[dict], int]:
     """Search for real car listings. Returns (listings, sites_searched).
-    Falls back to mock data on any failure."""
+    Falls back to mock data immediately if EXA_API_KEY is not set, or on any failure."""
     import asyncio
+
+    # Fast path: skip all network calls if EXA_API_KEY is not configured
+    if not os.getenv("EXA_API_KEY"):
+        logger.info("EXA_API_KEY not set — returning mock listings")
+        from backend.data.mock_listings import MOCK_LISTINGS
+        return [l.model_dump() for l in MOCK_LISTINGS], 0
+
     try:
         return await asyncio.get_event_loop().run_in_executor(None, lambda: _exa_search(preferences))
     except Exception as exc:
@@ -69,8 +76,11 @@ def _exa_search(preferences: dict) -> tuple[list[dict], int]:
 
     with ThreadPoolExecutor(max_workers=len(DOMAINS)) as pool:
         futures = {pool.submit(_search_domain, d): d for d in DOMAINS}
-        for future in as_completed(futures):
-            domain_results = future.result()
+        for future in as_completed(futures, timeout=10):
+            try:
+                domain_results = future.result()
+            except Exception:
+                domain_results = []
             if domain_results:
                 sites_with_results += 1
             all_results.extend(domain_results)

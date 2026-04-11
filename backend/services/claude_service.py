@@ -59,10 +59,20 @@ Respond ONLY with the JSON object, no other text."""
     )
 
     import json
-    text = response.content[0].text if response.content else "{}"
+    import logging
+    log = logging.getLogger(__name__)
+
+    text = (response.content[0].text if response.content else "{}").strip()
+    # Strip markdown code fences Claude sometimes adds
+    if text.startswith("```"):
+        text = text.split("```")[1]
+        if text.startswith("json"):
+            text = text[4:]
+        text = text.strip()
     try:
         return json.loads(text)
     except json.JSONDecodeError:
+        log.warning("analyze_listing: failed to parse Claude JSON response: %r", text[:200])
         return {
             "summary": "Analysis unavailable",
             "pros": [],

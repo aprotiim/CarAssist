@@ -31,7 +31,12 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await backendRes.json();
-    return NextResponse.json(data);
+    // Normalize snake_case backend fields to camelCase for the frontend
+    const listings = (data.listings || []).map((l: Record<string, unknown>) => ({
+      ...l,
+      dealerType: l.dealer_type,
+    }));
+    return NextResponse.json({ ...data, listings });
   } catch (error) {
     console.error("Search API error:", error);
     return NextResponse.json({ error: "Search failed" }, { status: 500 });

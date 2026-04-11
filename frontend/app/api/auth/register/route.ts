@@ -12,9 +12,17 @@ export async function POST(req: Request) {
   }).catch(() => null);
 
   if (!backendRes || !backendRes.ok) {
-    const detail = await backendRes?.json().catch(() => ({}));
+    const body = await backendRes?.json().catch(() => ({}));
+    // Pydantic validation errors come back as detail: [{msg, loc, ...}]
+    const rawDetail = body?.detail;
+    let errorMsg = "Registration failed";
+    if (typeof rawDetail === "string") {
+      errorMsg = rawDetail;
+    } else if (Array.isArray(rawDetail) && rawDetail.length > 0) {
+      errorMsg = rawDetail[0]?.msg || "Validation error";
+    }
     return NextResponse.json(
-      { error: detail?.detail || "Registration failed" },
+      { error: errorMsg },
       { status: backendRes?.status || 500 }
     );
   }
