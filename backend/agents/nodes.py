@@ -130,7 +130,7 @@ async def search_node(state: CargenuityState) -> dict:
     try:
         from backend.services import exa_service
         prefs = state.get("search_preferences") or {}
-        listings = await exa_service.search_listings(prefs)
+        listings, _ = await exa_service.search_listings(prefs)
         listings.sort(key=lambda l: l.get("score", 0), reverse=True)
         return {"listings": listings[:5]}
     except Exception as exc:
@@ -151,16 +151,8 @@ async def rag_node(state: CargenuityState) -> dict:
         if content:
             return {"rag_context": content}
 
-        # Last-resort fallback: top-3 topics by keyword frequency
-        from backend.data.rag_content import RAG_CONTENT
-        lower = user_message.lower()
-        scored = sorted(
-            RAG_CONTENT.items(),
-            key=lambda kv: sum(1 for w in lower.split() if w in kv[1].lower()),
-            reverse=True,
-        )
-        combined = "\n\n---\n\n".join(c for _, c in scored[:3])
-        return {"rag_context": combined}
+        # No relevant topic found — let Claude answer from its own knowledge
+        return {"rag_context": ""}
 
     except Exception as exc:
         return {"rag_context": "", "error": f"RAG error: {exc}"}
