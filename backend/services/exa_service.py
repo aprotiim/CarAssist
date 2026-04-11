@@ -43,47 +43,62 @@ def _norm(val: str, norm_map: dict[str, str]) -> str:
     return norm_map.get(v.lower(), v)
 
 
-def _filter_mock(listings, preferences: dict) -> list[dict]:
-    """Filter mock listings by user preferences. Empty list = no filter applied for that field."""
-    budget_min    = preferences.get("budget_min") or 0
-    budget_max    = preferences.get("budget_max") or 10_000_000
-    year_min      = preferences.get("year_min") or 0
-    year_max      = preferences.get("year_max") or 9999
-    max_mileage   = preferences.get("max_mileage") or 10_000_000
+def _filter_listings(listings, preferences: dict) -> list[dict]:
+    """
+    Strictly filter listings by user preferences.
+    Uses explicit None-checks so that 0 or empty string are never treated as 'no filter'.
+    """
+    budget_min  = preferences.get("budget_min")
+    budget_max  = preferences.get("budget_max")
+    year_min    = preferences.get("year_min")
+    year_max    = preferences.get("year_max")
+    max_mileage = preferences.get("max_mileage")
     brands        = [b.lower() for b in (preferences.get("brands") or [])]
     body_types    = [b.lower() for b in (preferences.get("body_types") or [])]
     fuel_types    = [f.lower() for f in (preferences.get("fuel_types") or [])]
     transmissions = [t.lower() for t in (preferences.get("transmissions") or [])]
     drivetrains   = [d.lower() for d in (preferences.get("drivetrains") or [])]
     zip_code      = (preferences.get("zip_code") or "").strip()
-    # radius_miles is noted but mock data lacks lat/lng for true geo-distance;
-    # we approximate by matching the first 3 zip digits (same metro area).
     zip_prefix    = zip_code[:3] if len(zip_code) == 5 else ""
 
     results = []
     for l in listings:
-        d = l.model_dump() if hasattr(l, "model_dump") else l
-        if not (budget_min <= d["price"] <= budget_max):
+        d = l.model_dump() if hasattr(l, "model_dump") else dict(l)
+        try:
+            price   = int(d.get("price") or 0)
+            year    = int(d.get("year") or 0)
+            mileage = int(d.get("mileage") or 0)
+        except (ValueError, TypeError):
             continue
-        if not (year_min <= d["year"] <= year_max):
+
+        if budget_min is not None and price < budget_min:
             continue
-        if d["mileage"] > max_mileage:
+        if budget_max is not None and price > budget_max:
             continue
-        if brands and d["make"].lower() not in brands:
+        if year_min is not None and year < year_min:
             continue
-        if body_types and d["body"].lower() not in body_types:
+        if year_max is not None and year > year_max:
             continue
-        if fuel_types and d["fuel"].lower() not in fuel_types:
+        if max_mileage is not None and mileage > max_mileage:
             continue
-        if transmissions and d["transmission"].lower() not in transmissions:
+        if brands and d.get("make", "").lower() not in brands:
             continue
-        if drivetrains and d["drivetrain"].lower() not in drivetrains:
+        if body_types and d.get("body", "").lower() not in body_types:
             continue
-        # Location: approximate match on first 3 zip digits when zip is provided
+        if fuel_types and d.get("fuel", "").lower() not in fuel_types:
+            continue
+        if transmissions and d.get("transmission", "").lower() not in transmissions:
+            continue
+        if drivetrains and d.get("drivetrain", "").lower() not in drivetrains:
+            continue
         if zip_prefix and d.get("zip", "")[:3] != zip_prefix:
             continue
         results.append(d)
     return results
+
+
+# Keep old name as alias so existing mock-fallback calls still work
+_filter_mock = _filter_listings
 
 
 def _get_exa():
@@ -201,14 +216,15 @@ def _exa_search(preferences: dict) -> tuple[list[dict], int]:
             "source": _source_from_url(r.url),
         })
 
-    listings = _parse_with_claude(raw)
+    listings = _parse_with_claude(raw, preferences)
 
     if not listings:
         logger.warning("Claude could not parse Exa results — falling back to filtered mock listings")
         from backend.data.mock_listings import MOCK_LISTINGS
-        return _filter_mock(MOCK_LISTINGS, preferences), 0
+        return _filter_listings(MOCK_LISTINGS, preferences), 0
 
-    filtered = _filter_mock(listings, preferences)
+    # Second-pass hard filter — catches anything Claude missed in extraction
+    filtered = _filter_listings(listings, preferences)
     logger.info("After preference filtering: %d/%d listings remain", len(filtered), len(listings))
     return filtered, sites_with_results
 
@@ -246,23 +262,59 @@ def _build_query(prefs: dict) -> str:
     return f"{base} used car for sale"
 
 
-_PARSE_PROMPT = """Extract every individual used car listing from these web pages. Output ONLY a JSON array — no explanation, no markdown.
+def _build_parse_prompt(preferences: dict) -> str:
+    """Build a Claude extraction prompt that includes the user's filter constraints."""
+    constraints = []
+    year_min    = preferences.get("year_min")
+    year_max    = preferences.get("year_max")
+    budget_min  = preferences.get("budget_min")
+    budget_max  = preferences.get("budget_max")
+    max_mileage = preferences.get("max_mileage")
+    brands      = preferences.get("brands") or []
+    body_types  = preferences.get("body_types") or []
+    fuel_types  = preferences.get("fuel_types") or []
 
-Each object must have:
-{"year":2021,"make":"Toyota","model":"Camry SE","price":22500,"mileage":34000,"fuel":"Gasoline","body":"Sedan","transmission":"Automatic","drivetrain":"FWD","color":"White","dealer":"AutoNation","dealer_type":"dealer","url":"https://...","source":"CarGurus"}
+    if year_min is not None and year_max is not None:
+        constraints.append(f"- year must be between {year_min} and {year_max} (inclusive)")
+    elif year_min is not None:
+        constraints.append(f"- year must be {year_min} or newer")
+    if budget_min is not None:
+        constraints.append(f"- price must be at least ${budget_min:,}")
+    if budget_max is not None:
+        constraints.append(f"- price must be at most ${budget_max:,}")
+    if max_mileage is not None:
+        constraints.append(f"- mileage must be at most {max_mileage:,}")
+    if brands:
+        constraints.append(f"- make must be one of: {', '.join(brands)}")
+    if body_types:
+        constraints.append(f"- body type must be one of: {', '.join(body_types)}")
+    if fuel_types:
+        constraints.append(f"- fuel type must be one of: {', '.join(fuel_types)}")
 
-Rules:
-- Include every car that has at least year + make + price
-- Defaults: fuel="Gasoline", transmission="Automatic", drivetrain="FWD", color="Unknown", dealer_type="dealer", mileage=0
-- price must be a positive integer (skip if missing)
-- Return ONLY the JSON array, starting with [ and ending with ]
+    if constraints:
+        filter_block = "Only extract cars that match ALL of these criteria:\n" + "\n".join(constraints) + "\nSkip any car that does not satisfy every criterion above.\n\n"
+    else:
+        filter_block = ""
 
-Pages:
-"""
+    return (
+        f"{filter_block}"
+        "Extract individual used car listings from these web pages. "
+        "Output ONLY a JSON array — no explanation, no markdown.\n\n"
+        'Each object must have:\n'
+        '{"year":2021,"make":"Toyota","model":"Camry SE","price":22500,"mileage":34000,'
+        '"fuel":"Gasoline","body":"Sedan","transmission":"Automatic","drivetrain":"FWD",'
+        '"color":"White","dealer":"AutoNation","dealer_type":"dealer","url":"https://...","source":"CarGurus"}\n\n'
+        "Rules:\n"
+        "- Include only cars that have at least year + make + price\n"
+        "- Defaults: fuel=\"Gasoline\", transmission=\"Automatic\", drivetrain=\"FWD\", color=\"Unknown\", dealer_type=\"dealer\", mileage=0\n"
+        "- price must be a positive integer (skip if missing)\n"
+        "- Return ONLY the JSON array, starting with [ and ending with ]\n\n"
+        "Pages:\n"
+    )
 
 
-def _parse_batch(client, raw_batch: list[dict], id_offset: int) -> list[dict]:
-    prompt = _PARSE_PROMPT + json.dumps(raw_batch, indent=2)
+def _parse_batch(client, raw_batch: list[dict], id_offset: int, preferences: dict) -> list[dict]:
+    prompt = _build_parse_prompt(preferences) + json.dumps(raw_batch, indent=2)
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=8192,
@@ -341,7 +393,7 @@ def _parse_batch(client, raw_batch: list[dict], id_offset: int) -> list[dict]:
     return result
 
 
-def _parse_with_claude(raw: list[dict]) -> list[dict]:
+def _parse_with_claude(raw: list[dict], preferences: dict) -> list[dict]:
     import anthropic as ant
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -356,7 +408,7 @@ def _parse_with_claude(raw: list[dict]) -> list[dict]:
     for i in range(0, len(raw), BATCH_SIZE):
         batch = raw[i:i + BATCH_SIZE]
         try:
-            listings = _parse_batch(client, batch, id_offset=len(all_listings))
+            listings = _parse_batch(client, batch, id_offset=len(all_listings), preferences=preferences)
             all_listings.extend(listings)
             logger.info("_parse_with_claude: batch %d-%d → %d listings", i, i + len(batch), len(listings))
         except Exception as e:
