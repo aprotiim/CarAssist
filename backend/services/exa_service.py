@@ -318,6 +318,8 @@ def _build_parse_prompt(preferences: dict) -> str:
 
 
 def _parse_batch(client, raw_batch: list[dict], id_offset: int, preferences: dict) -> list[dict]:
+    zip_code = (preferences.get("zip_code") or "").strip()
+    radius   = int(preferences.get("radius_miles") or 50)
     prompt = _build_parse_prompt(preferences) + json.dumps(raw_batch, indent=2)
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
@@ -371,7 +373,7 @@ def _parse_batch(client, raw_batch: list[dict], id_offset: int, preferences: dic
             fuel         = _norm(l.get("fuel") or "Gasoline",  _FUEL_NORM)
             transmission = _norm(l.get("transmission") or "Automatic", _TRANS_NORM)
             drivetrain   = _norm(l.get("drivetrain") or "FWD", _DRIVE_NORM)
-            url = _listing_url(raw_url, make, model, year)
+            url = _listing_url(raw_url, make, model, year, zip_code=zip_code, radius=radius)
             result.append({
                 "id": id_offset + i + 1,
                 "year": year,
@@ -421,54 +423,61 @@ def _parse_with_claude(raw: list[dict], preferences: dict) -> list[dict]:
     return all_listings
 
 
-def _listing_url(raw_url: str, make: str, model: str, year: int) -> str:
+def _listing_url(raw_url: str, make: str, model: str, year: int,
+                 zip_code: str = "", radius: int = 50) -> str:
     """
-    Build a stable search URL on the source platform for this exact make/model/year.
-    Individual listing pages expire when a car sells; platform search pages are permanent
-    and will show the user current inventory for that specific car.
+    Build a platform search URL for this make/model/year that includes the user's
+    zip code and radius so the site shows inventory near them.
     """
     import re
     make_slug  = re.sub(r"[^a-z0-9]+", "-", make.lower()).strip("-")
-    # Use only the base model name (drop trim like "SE", "XLT") for cleaner search URLs
     base_model = model.split()[0] if model else model
     model_slug = re.sub(r"[^a-z0-9]+", "-", base_model.lower()).strip("-")
+    loc = f"&zip={zip_code}&radius={radius}" if zip_code else ""
 
     if "autotrader" in raw_url:
         return (f"https://www.autotrader.com/cars-for-sale/used-cars/"
-                f"{make_slug}/{model_slug}/?startYear={year}&endYear={year}")
+                f"{make_slug}/{model_slug}/?startYear={year}&endYear={year}{loc}")
 
     if "cars.com" in raw_url:
+        loc_cc = f"&zip={zip_code}&maximum_distance={radius}" if zip_code else ""
         return (f"https://www.cars.com/shopping/results/?"
                 f"makes[]={make_slug}&models[]={make_slug}-{model_slug}"
-                f"&stock_type=used&year_max={year}&year_min={year}")
+                f"&stock_type=used&year_max={year}&year_min={year}{loc_cc}")
 
     if "cargurus" in raw_url:
         make_cg  = make.replace(" ", "_")
         model_cg = base_model.replace(" ", "_")
+        loc_cg = f"&zip={zip_code}&distance={radius}" if zip_code else ""
         return (f"https://www.cargurus.com/Cars/new/nl_{make_cg}_{model_cg}"
-                f"?minYear={year}&maxYear={year}")
+                f"?minYear={year}&maxYear={year}{loc_cg}")
 
     if "carmax" in raw_url:
-        return f"https://www.carmax.com/cars/{make_slug}/{model_slug}"
+        loc_cm = f"?zip={zip_code}" if zip_code else ""
+        return f"https://www.carmax.com/cars/{make_slug}/{model_slug}{loc_cm}"
 
     if "carvana" in raw_url:
+        # Carvana ships nationwide — no zip filter in URL
         return f"https://www.carvana.com/cars/{make_slug}?year={year}"
 
     if "truecar" in raw_url:
+        loc_tc = f"&zip={zip_code}&radius={radius}" if zip_code else ""
         return (f"https://www.truecar.com/used-cars-for-sale/listings/"
-                f"{make_slug}/{model_slug}/?year_min={year}&year_max={year}")
+                f"{make_slug}/{model_slug}/?year_min={year}&year_max={year}{loc_tc}")
 
     if "edmunds" in raw_url:
+        loc_ed = f"&zip={zip_code}&radius={radius}" if zip_code else ""
         return (f"https://www.edmunds.com/{make_slug}/{model_slug}/used/"
-                f"?year_min={year}&year_max={year}")
+                f"?year_min={year}&year_max={year}{loc_ed}")
 
     if "vroom" in raw_url:
+        # Vroom ships nationwide — no zip filter
         return (f"https://www.vroom.com/cars?makes={make}&models={base_model}"
                 f"&yearMin={year}&yearMax={year}")
 
-    # Default fallback — Autotrader has the most reliable URL structure
+    # Default: Autotrader with location
     return (f"https://www.autotrader.com/cars-for-sale/used-cars/"
-            f"{make_slug}/{model_slug}/?startYear={year}&endYear={year}")
+            f"{make_slug}/{model_slug}/?startYear={year}&endYear={year}{loc}")
 
 
 def _score(year: int, mileage: int) -> int:
