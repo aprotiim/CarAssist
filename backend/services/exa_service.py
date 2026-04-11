@@ -210,61 +210,54 @@ def _build_query(prefs: dict) -> str:
     return f"{base} used car for sale"
 
 
-def _parse_with_claude(raw: list[dict]) -> list[dict]:
-    import anthropic as ant
+_PARSE_PROMPT = """Extract every individual used car listing from these web pages. Output ONLY a JSON array — no explanation, no markdown.
 
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        return []
-
-    client = ant.Anthropic(api_key=api_key)
-
-    prompt = f"""You are parsing used car listing data from web pages. Extract every individual car listing you can find.
-
-Pages may be individual listing pages OR search results pages containing multiple cars. Extract ALL cars you find with enough info.
-
-For each car listing found, output a JSON object with:
-- year (int, e.g. 2021)
-- make (string, e.g. "Toyota")
-- model (string, e.g. "Camry SE")
-- price (int, USD, no commas — e.g. 22500)
-- mileage (int, miles, no commas — e.g. 45000; use 0 if not found)
-- fuel ("Gasoline", "Diesel", "Hybrid", "Plug-in Hybrid", or "Electric")
-- body ("Sedan", "SUV", "Hatchback", "Truck", "Coupe", "Convertible", "Minivan", or "Wagon")
-- transmission ("Automatic", "Manual", or "CVT")
-- drivetrain ("FWD", "RWD", "AWD", or "4WD")
-- color (string, or "Unknown")
-- dealer (string, seller/site name)
-- dealer_type ("dealer" or "private")
-- url (copy from input url field)
-- source (copy from input source field)
+Each object must have:
+{"year":2021,"make":"Toyota","model":"Camry SE","price":22500,"mileage":34000,"fuel":"Gasoline","body":"Sedan","transmission":"Automatic","drivetrain":"FWD","color":"White","dealer":"AutoNation","dealer_type":"dealer","url":"https://...","source":"CarGurus"}
 
 Rules:
-- Extract every car that has at least a year, make, and price
-- Default unknown fields: fuel="Gasoline", transmission="Automatic", drivetrain="FWD", color="Unknown", dealer_type="dealer"
-- price must be a positive integer — skip only if price is completely absent
-- mileage=0 is OK if not mentioned
-- Return ONLY a valid JSON array with no explanation
+- Include every car that has at least year + make + price
+- Defaults: fuel="Gasoline", transmission="Automatic", drivetrain="FWD", color="Unknown", dealer_type="dealer", mileage=0
+- price must be a positive integer (skip if missing)
+- Return ONLY the JSON array, starting with [ and ending with ]
 
-Pages to parse:
-{json.dumps(raw, indent=2)}"""
+Pages:
+"""
 
+
+def _parse_batch(client, raw_batch: list[dict], id_offset: int) -> list[dict]:
+    prompt = _PARSE_PROMPT + json.dumps(raw_batch, indent=2)
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=4096,
+        max_tokens=8192,
         messages=[{"role": "user", "content": prompt}],
     )
 
     text = (response.content[0].text if response.content else "[]").strip()
-    if text.startswith("```"):
-        text = text.split("```")[1]
-        if text.startswith("json"):
-            text = text[4:]
-    text = text.strip()
+
+    # Strip markdown code fences
+    if "```" in text:
+        parts = text.split("```")
+        for part in parts:
+            part = part.strip()
+            if part.startswith("json"):
+                part = part[4:].strip()
+            if part.startswith("["):
+                text = part
+                break
+
+    # Extract JSON array even if there's surrounding text
+    start = text.find("[")
+    end = text.rfind("]")
+    if start == -1 or end == -1:
+        logger.warning("_parse_batch: no JSON array found in Claude response: %r", text[:200])
+        return []
+    text = text[start:end + 1]
 
     try:
         parsed = json.loads(text)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        logger.warning("_parse_batch: JSON decode error: %s — snippet: %r", e, text[:200])
         return []
 
     result = []
@@ -273,13 +266,13 @@ Pages to parse:
             continue
         try:
             price = int(l.get("price") or 0)
-            mileage = int(l.get("mileage") or 0)
             if price <= 0:
                 continue
             year = int(l.get("year") or 2020)
+            mileage = int(l.get("mileage") or 0)
             body = l.get("body") or "Sedan"
             result.append({
-                "id": i + 1,
+                "id": id_offset + i + 1,
                 "year": year,
                 "make": str(l.get("make") or "Unknown"),
                 "model": str(l.get("model") or "Unknown"),
@@ -300,8 +293,31 @@ Pages to parse:
             })
         except (ValueError, TypeError):
             continue
-
     return result
+
+
+def _parse_with_claude(raw: list[dict]) -> list[dict]:
+    import anthropic as ant
+
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        return []
+
+    client = ant.Anthropic(api_key=api_key)
+
+    # Process in batches of 5 pages — prevents token overflow and partial truncation
+    BATCH_SIZE = 5
+    all_listings: list[dict] = []
+    for i in range(0, len(raw), BATCH_SIZE):
+        batch = raw[i:i + BATCH_SIZE]
+        try:
+            listings = _parse_batch(client, batch, id_offset=len(all_listings))
+            all_listings.extend(listings)
+            logger.info("_parse_with_claude: batch %d-%d → %d listings", i, i + len(batch), len(listings))
+        except Exception as e:
+            logger.warning("_parse_with_claude: batch %d failed: %s", i, e)
+
+    return all_listings
 
 
 def _score(year: int, mileage: int) -> int:
